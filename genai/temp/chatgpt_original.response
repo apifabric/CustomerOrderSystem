@@ -1,0 +1,62 @@
+{
+    "models": [
+        {
+            "classname": "Customer",
+            "code": "class Customer(Base):\n    __tablename__ = 'customer'\n\n    description = 'This table contains customer information.'\n\n    id = Column(Integer, primary_key=True, autoincrement=True)\n    name = Column(String)\n    balance = Column(Integer, default=0)\n    credit_limit = Column(Integer)",
+            "description": "This table contains customer information.",
+            "name": "Customer"
+        },
+        {
+            "classname": "Order",
+            "code": "class Order(Base):\n    __tablename__ = 'order'\n\n    description = 'This table contains order information.'\n\n    id = Column(Integer, primary_key=True, autoincrement=True)\n    customer_id = Column(Integer, ForeignKey('customer.id'))\n    date_shipped = Column(Date, nullable=True)\n    notes = Column(String, nullable=True)\n    amount_total = Column(Integer, default=0)",
+            "description": "This table contains order information.",
+            "name": "Order"
+        },
+        {
+            "classname": "Item",
+            "code": "class Item(Base):\n    __tablename__ = 'item'\n\n    description = 'This table contains individual order items.'\n\n    id = Column(Integer, primary_key=True, autoincrement=True)\n    order_id = Column(Integer, ForeignKey('order.id'))\n    product_id = Column(Integer, ForeignKey('product.id'))\n    quantity = Column(Integer)\n    amount = Column(Integer, default=0)\n    unit_price = Column(Integer)",
+            "description": "This table contains individual order items.",
+            "name": "Item"
+        },
+        {
+            "classname": "Product",
+            "code": "class Product(Base):\n    __tablename__ = 'product'\n\n    description = 'This table contains product information.'\n\n    id = Column(Integer, primary_key=True, autoincrement=True)\n    name = Column(String)\n    unit_price = Column(Integer)",
+            "description": "This table contains product information.",
+            "name": "Product"
+        }
+    ],
+    "rules": [
+        {
+            "name": "Balance Constraint",
+            "description": "Customer's balance must not exceed their credit limit.",
+            "use_case": "1. The Customer's balance is less than the credit limit",
+            "code": "Rule.constraint(validate=Customer,\n                as_condition=lambda row: row.balance <= row.credit_limit,\n                error_msg=\"Customer balance ({row.balance}) exceeds credit limit ({row.credit_limit})\")"
+        },
+        {
+            "name": "Balance Derivation",
+            "description": "Calculate customer's balance as the sum of their orders' total amounts that have not been shipped.",
+            "use_case": "2. The Customer's balance is the sum of the Order amount_total where date_shipped is null",
+            "code": "Rule.sum(derive=Customer.balance, as_sum_of=Order.amount_total, where=lambda row: row.date_shipped is None)"
+        },
+        {
+            "name": "Order Amount Total",
+            "description": "Calculate order's total amount as the sum of item amounts.",
+            "use_case": "3. The Order's amount_total is the sum of the Item amount",
+            "code": "Rule.sum(derive=Order.amount_total, as_sum_of=Item.amount)"
+        },
+        {
+            "name": "Item Amount Calculation",
+            "description": "Calculate item amount based on quantity and unit price.",
+            "use_case": "4. The Item amount is the quantity * unit_price",
+            "code": "Rule.formula(derive=Item.amount, as_expression=lambda row: row.quantity * row.unit_price)"
+        },
+        {
+            "name": "Copy Unit Price",
+            "description": "Copy the unit price from product to item.",
+            "use_case": "5. The Item unit_price is copied from the Product unit_price",
+            "code": "Rule.copy(derive=Item.unit_price, from_parent=Product.unit_price)"
+        }
+    ],
+    "test_data": "from datetime import date\n\ncustomer1 = Customer(id=1, name='Alice', balance=150, credit_limit=200)\ncustomer2 = Customer(id=2, name='Bob', balance=250, credit_limit=300)\ncustomer3 = Customer(id=3, name='Charlie', balance=100, credit_limit=150)\ncustomer4 = Customer(id=4, name='Diana', balance=350, credit_limit=400)\n\norder1 = Order(id=1, customer_id=1, date_shipped=None, notes='Urgent delivery', amount_total=150)\norder2 = Order(id=2, customer_id=2, date_shipped=date(2023, 1, 10), notes='Gift order', amount_total=250)\norder3 = Order(id=3, customer_id=3, date_shipped=None, notes='Office supplies', amount_total=100)\norder4 = Order(id=4, customer_id=4, date_shipped=date(2023, 2, 20), notes='Monthly subscription', amount_total=350)\n\nproduct1 = Product(id=1, name='Laptop', unit_price=1000)\nproduct2 = Product(id=2, name='Phone', unit_price=500)\nproduct3 = Product(id=3, name='Headphones', unit_price=150)\nproduct4 = Product(id=4, name='Monitor', unit_price=300)\n\nitem1 = Item(id=1, order_id=1, product_id=1, quantity=1, amount=1000, unit_price=1000)\nitem2 = Item(id=2, order_id=2, product_id=2, quantity=2, amount=1000, unit_price=500)\nitem3 = Item(id=3, order_id=3, product_id=3, quantity=2, amount=300, unit_price=150)\nitem4 = Item(id=4, order_id=4, product_id=4, quantity=1, amount=300, unit_price=300)",
+    "name": "CustomerOrderSystem"
+}
